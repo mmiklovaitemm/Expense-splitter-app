@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ArrowLeftRight } from "lucide-react";
+import { useState, useTransition } from "react";
+import { ChevronDown, ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 import { CategoryIcon } from "@/lib/categoryIcons";
 import { MoneyText } from "./MoneyText";
-import { formatMoney, formatDate } from "@/lib/money";
+import { formatMoney, formatDate, toMajorUnits } from "@/lib/money";
 import type { ActivityItem } from "@/lib/data";
+import { AddExpenseModal, type ModalMember, type ModalCategory } from "./AddExpenseModal";
 
 const SPLIT_LABEL: Record<string, string> = {
   EXACT: "Exact",
@@ -16,11 +17,20 @@ const SPLIT_LABEL: Record<string, string> = {
 export function ActivityRow({
   item,
   defaultCurrency,
+  members,
+  categories,
+  updateAction,
+  deleteAction,
 }: {
   item: ActivityItem;
   defaultCurrency: string;
+  members: ModalMember[];
+  categories: ModalCategory[];
+  updateAction: (expenseId: string, formData: FormData) => Promise<void>;
+  deleteAction: (expenseId: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [deletePending, startDelete] = useTransition();
 
   if (item.kind === "settlement") {
     return (
@@ -44,6 +54,15 @@ export function ActivityRow({
         <MoneyText minor={item.amount} currency={item.currency} className="text-sm font-semibold text-[var(--positive)]" />
       </div>
     );
+  }
+
+  const boundUpdate = updateAction.bind(null, item.id);
+
+  function handleDelete() {
+    if (!window.confirm(`Delete "${item.kind === "expense" ? item.description : ""}"? This cannot be undone.`)) return;
+    startDelete(async () => {
+      await deleteAction(item.id);
+    });
   }
 
   return (
@@ -81,13 +100,62 @@ export function ActivityRow({
       </button>
 
       {expanded && (
-        <div className="ml-11 mr-3 mb-2 space-y-1 border-l border-[var(--border-subtle)] pl-3">
-          {item.splits.map((s) => (
-            <div key={s.memberId} className="flex items-center justify-between text-xs text-[var(--muted)]">
-              <span>{s.memberName}{s.memberId === item.paidByMemberId ? " (paid)" : " owes"}</span>
-              <span>{formatMoney(s.amount, defaultCurrency)}</span>
-            </div>
-          ))}
+        <div className="ml-11 mr-3 mb-2 space-y-2">
+          <div className="space-y-1 border-l border-[var(--border-subtle)] pl-3">
+            {item.splits.map((s) => (
+              <div key={s.memberId} className="flex items-center justify-between text-xs text-[var(--muted)]">
+                <span>{s.memberName}{s.memberId === item.paidByMemberId ? " (paid)" : " owes"}</span>
+                <span>{formatMoney(s.amount, defaultCurrency)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 pl-3">
+            <AddExpenseModal
+              members={members}
+              categories={categories}
+              defaultCurrency={defaultCurrency}
+              action={boundUpdate}
+              title="Edit expense"
+              submitLabel="Save changes"
+              initial={{
+                description: item.description,
+                amountMajor: toMajorUnits(item.originalAmount, item.originalCurrency),
+                currency: item.originalCurrency,
+                categoryId: item.categoryId,
+                paidByMemberId: item.paidByMemberId,
+                date: item.date.toISOString().slice(0, 10),
+                splitType: item.splitType as "EQUAL" | "EXACT" | "PERCENT" | "SHARES",
+                participants: item.splits.map((s) => ({
+                  memberId: s.memberId,
+                  value:
+                    item.splitType === "EXACT"
+                      ? toMajorUnits(s.amount, defaultCurrency)
+                      : item.splitType === "PERCENT"
+                        ? s.percent ?? undefined
+                        : item.splitType === "SHARES"
+                          ? s.shares ?? undefined
+                          : undefined,
+                })),
+              }}
+              trigger={(open) => (
+                <button
+                  onClick={open}
+                  className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border)] px-2 py-1 text-xs text-[var(--muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-white"
+                >
+                  <Pencil className="h-3 w-3" />
+                  Edit
+                </button>
+              )}
+            />
+            <button
+              onClick={handleDelete}
+              disabled={deletePending}
+              className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border)] px-2 py-1 text-xs text-[var(--muted)] transition-colors hover:border-[var(--negative)] hover:text-[var(--negative)] disabled:opacity-50"
+            >
+              <Trash2 className="h-3 w-3" />
+              {deletePending ? "Deleting…" : "Delete"}
+            </button>
+          </div>
         </div>
       )}
     </div>

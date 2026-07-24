@@ -86,6 +86,7 @@ export type ActivityItem =
       id: string;
       description: string;
       date: Date;
+      categoryId: string | null;
       categoryIcon: string | null;
       originalCurrency: string;
       originalAmount: number;
@@ -93,7 +94,13 @@ export type ActivityItem =
       splitType: string;
       paidByMemberId: string;
       paidByName: string;
-      splits: { memberId: string; memberName: string; amount: number }[];
+      splits: {
+        memberId: string;
+        memberName: string;
+        amount: number;
+        percent: number | null;
+        shares: number | null;
+      }[];
     }
   | {
       kind: "settlement";
@@ -127,6 +134,7 @@ export async function getGroupActivity(groupId: string): Promise<ActivityItem[]>
       id: e.id,
       description: e.description,
       date: e.date,
+      categoryId: e.categoryId,
       categoryIcon: e.category?.icon ?? null,
       originalCurrency: e.originalCurrency,
       originalAmount: e.originalAmount,
@@ -134,7 +142,13 @@ export async function getGroupActivity(groupId: string): Promise<ActivityItem[]>
       splitType: e.splitType,
       paidByMemberId: e.paidByMemberId,
       paidByName: e.paidByMember.name,
-      splits: e.splits.map((s) => ({ memberId: s.memberId, memberName: s.member.name, amount: s.amount })),
+      splits: e.splits.map((s) => ({
+        memberId: s.memberId,
+        memberName: s.member.name,
+        amount: s.amount,
+        percent: s.percent,
+        shares: s.shares,
+      })),
     })),
     ...settlements.map((s): ActivityItem => ({
       kind: "settlement",

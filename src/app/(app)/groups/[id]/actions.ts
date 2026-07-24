@@ -15,9 +15,7 @@ async function requireMembership(groupId: string) {
   return { session, member };
 }
 
-export async function createExpenseAction(groupId: string, formData: FormData) {
-  await requireMembership(groupId);
-
+async function buildExpenseData(groupId: string, formData: FormData) {
   const group = await prisma.group.findUniqueOrThrow({ where: { id: groupId } });
 
   const description = String(formData.get("description") ?? "").trim();
@@ -66,23 +64,80 @@ export async function createExpenseAction(groupId: string, formData: FormData) {
       : participants
   );
 
+  return {
+    description,
+    categoryId,
+    date: dateStr ? new Date(dateStr) : new Date(),
+    originalCurrency: currency,
+    originalAmount,
+    convertedAmount,
+    exchangeRate: rate,
+    splitType,
+    paidByMemberId,
+    splits,
+  };
+}
+
+export async function createExpenseAction(groupId: string, formData: FormData) {
+  await requireMembership(groupId);
+  const data = await buildExpenseData(groupId, formData);
+
   await prisma.expense.create({
     data: {
       groupId,
-      description,
-      categoryId,
-      date: dateStr ? new Date(dateStr) : new Date(),
-      originalCurrency: currency,
-      originalAmount,
-      convertedAmount,
-      exchangeRate: rate,
-      splitType,
-      paidByMemberId,
-      splits: { create: splits.map((s) => ({ memberId: s.memberId, amount: s.amount, percent: s.percent, shares: s.shares })) },
+      description: data.description,
+      categoryId: data.categoryId,
+      date: data.date,
+      originalCurrency: data.originalCurrency,
+      originalAmount: data.originalAmount,
+      convertedAmount: data.convertedAmount,
+      exchangeRate: data.exchangeRate,
+      splitType: data.splitType,
+      paidByMemberId: data.paidByMemberId,
+      splits: {
+        create: data.splits.map((s) => ({ memberId: s.memberId, amount: s.amount, percent: s.percent, shares: s.shares })),
+      },
     },
   });
 
   revalidatePath(`/groups/${groupId}`);
+}
+
+export async function updateExpenseAction(expenseId: string, formData: FormData) {
+  const expense = await prisma.expense.findUniqueOrThrow({ where: { id: expenseId } });
+  await requireMembership(expense.groupId);
+  const data = await buildExpenseData(expense.groupId, formData);
+
+  await prisma.$transaction([
+    prisma.expenseSplit.deleteMany({ where: { expenseId } }),
+    prisma.expense.update({
+      where: { id: expenseId },
+      data: {
+        description: data.description,
+        categoryId: data.categoryId,
+        date: data.date,
+        originalCurrency: data.originalCurrency,
+        originalAmount: data.originalAmount,
+        convertedAmount: data.convertedAmount,
+        exchangeRate: data.exchangeRate,
+        splitType: data.splitType,
+        paidByMemberId: data.paidByMemberId,
+        splits: {
+          create: data.splits.map((s) => ({ memberId: s.memberId, amount: s.amount, percent: s.percent, shares: s.shares })),
+        },
+      },
+    }),
+  ]);
+
+  revalidatePath(`/groups/${expense.groupId}`);
+}
+
+export async function deleteExpenseAction(expenseId: string) {
+  const expense = await prisma.expense.findUniqueOrThrow({ where: { id: expenseId } });
+  await requireMembership(expense.groupId);
+
+  await prisma.expense.delete({ where: { id: expenseId } });
+  revalidatePath(`/groups/${expense.groupId}`);
 }
 
 export async function recordSettlementAction(groupId: string, formData: FormData) {

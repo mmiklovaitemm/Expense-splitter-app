@@ -12,7 +12,14 @@ import { BalanceSidebar } from "@/components/BalanceSidebar";
 import { CategoryBreakdown } from "@/components/CategoryBreakdown";
 import { DeleteGroupModal } from "@/components/DeleteGroupModal";
 import { formatMoney } from "@/lib/money";
-import { createExpenseAction, recordSettlementAction, addMemberAction, deleteGroupAction } from "./actions";
+import {
+  createExpenseAction,
+  recordSettlementAction,
+  addMemberAction,
+  deleteGroupAction,
+  updateExpenseAction,
+  deleteExpenseAction,
+} from "./actions";
 
 export default async function GroupPage({
   params,
@@ -107,7 +114,6 @@ export default async function GroupPage({
         <div className="flex items-center gap-2">
           <SettleUpModal members={members} currency={group.defaultCurrency} action={boundRecordSettlement} />
           <AddExpenseModal
-            groupId={groupId}
             members={members}
             categories={categories}
             defaultCurrency={group.defaultCurrency}
@@ -149,7 +155,15 @@ export default async function GroupPage({
               </div>
             ) : (
               visibleActivity.map((item) => (
-                <ActivityRow key={`${item.kind}-${item.id}`} item={item} defaultCurrency={group.defaultCurrency} />
+                <ActivityRow
+                  key={`${item.kind}-${item.id}`}
+                  item={item}
+                  defaultCurrency={group.defaultCurrency}
+                  members={members}
+                  categories={categories}
+                  updateAction={updateExpenseAction}
+                  deleteAction={deleteExpenseAction}
+                />
               ))
             )}
           </div>

@@ -19,32 +19,55 @@ export interface ModalCategory {
   icon: string;
 }
 
+export interface ExpenseInitialValues {
+  description: string;
+  amountMajor: number;
+  currency: string;
+  categoryId: string | null;
+  paidByMemberId: string;
+  date: string; // yyyy-mm-dd
+  splitType: SplitType;
+  participants: { memberId: string; value?: number }[]; // value = major units for EXACT, percent for PERCENT, share count for SHARES
+}
+
 export function AddExpenseModal({
-  groupId,
   members,
   categories,
   defaultCurrency,
   action,
+  initial,
+  title = "Add expense",
+  submitLabel = "Save expense",
+  trigger,
 }: {
-  groupId: string;
   members: ModalMember[];
   categories: ModalCategory[];
   defaultCurrency: string;
   action: (formData: FormData) => Promise<void>;
+  initial?: ExpenseInitialValues;
+  title?: string;
+  submitLabel?: string;
+  trigger?: (open: () => void) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [advanced, setAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(initial ? initial.splitType !== "EQUAL" : false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState(defaultCurrency);
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
-  const [paidByMemberId, setPaidByMemberId] = useState(members[0]?.id ?? "");
-  const [splitType, setSplitType] = useState<SplitType>("EQUAL");
-  const [selected, setSelected] = useState<Set<string>>(new Set(members.map((m) => m.id)));
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [amount, setAmount] = useState(initial ? String(initial.amountMajor) : "");
+  const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency);
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? categories[0]?.id ?? "");
+  const [paidByMemberId, setPaidByMemberId] = useState(initial?.paidByMemberId ?? members[0]?.id ?? "");
+  const [splitType, setSplitType] = useState<SplitType>(initial?.splitType ?? "EQUAL");
+  const [selected, setSelected] = useState<Set<string>>(
+    new Set(initial ? initial.participants.map((p) => p.memberId) : members.map((m) => m.id))
+  );
+  const [values, setValues] = useState<Record<string, string>>(
+    initial
+      ? Object.fromEntries(initial.participants.filter((p) => p.value != null).map((p) => [p.memberId, String(p.value)]))
+      : {}
+  );
 
   const totalMinor = useMemo(() => {
     const n = parseFloat(amount);
@@ -76,6 +99,10 @@ export function AddExpenseModal({
     });
   }
 
+  function openModal() {
+    setOpen(true);
+  }
+
   function submit(formData: FormData) {
     setError(null);
     if (preview && !preview.validation.valid) {
@@ -86,9 +113,11 @@ export function AddExpenseModal({
       try {
         await action(formData);
         setOpen(false);
-        setDescription("");
-        setAmount("");
-        setValues({});
+        if (!initial) {
+          setDescription("");
+          setAmount("");
+          setValues({});
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong");
       }
@@ -97,16 +126,20 @@ export function AddExpenseModal({
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)]"
-      >
-        <Plus className="h-4 w-4" />
-        Add expense
-      </button>
+      {trigger ? (
+        trigger(openModal)
+      ) : (
+        <button
+          onClick={openModal}
+          className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)]"
+        >
+          <Plus className="h-4 w-4" />
+          Add expense
+        </button>
+      )}
 
       {open && (
-        <Modal title="Add expense" onClose={() => setOpen(false)} width="max-w-lg">
+        <Modal title={title} onClose={() => setOpen(false)} width="max-w-lg">
           <form action={submit} className="flex flex-col gap-3">
             <input type="hidden" name="splitType" value={splitType} />
             <input
@@ -179,7 +212,7 @@ export function AddExpenseModal({
               <input
                 name="date"
                 type="date"
-                defaultValue={new Date().toISOString().slice(0, 10)}
+                defaultValue={initial?.date ?? new Date().toISOString().slice(0, 10)}
                 className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
               />
             </div>
@@ -261,7 +294,7 @@ export function AddExpenseModal({
               disabled={pending}
               className="mt-1 rounded-[var(--radius-md)] bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-60"
             >
-              {pending ? "Saving…" : "Save expense"}
+              {pending ? "Saving…" : submitLabel}
             </button>
           </form>
         </Modal>
