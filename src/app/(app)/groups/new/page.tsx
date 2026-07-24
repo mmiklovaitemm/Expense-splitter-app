@@ -1,5 +1,6 @@
 import { createGroupAction } from "../[id]/actions";
 import { CancelButton } from "@/components/CancelButton";
+import { SubmitButton } from "@/components/SubmitButton";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CNY", "KRW", "AUD", "CAD", "CHF", "INR"];
 
@@ -43,12 +44,12 @@ export default function NewGroupPage() {
           </p>
         </div>
         <div className="mt-2 flex gap-2">
-          <button
-            type="submit"
-            className="flex-1 rounded-[var(--radius-md)] bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)]"
+          <SubmitButton
+            pendingText="Creating…"
+            className="flex-1 rounded-[var(--radius-md)] bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-60"
           >
             Create group
-          </button>
+          </SubmitButton>
           <CancelButton />
         </div>
       </form>
