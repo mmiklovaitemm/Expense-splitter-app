@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Check } from "lucide-react";
 import { Modal } from "./Modal";
 
 export function AddMemberModal({ action }: { action: (formData: FormData) => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [includePast, setIncludePast] = useState(false);
 
   function submit(formData: FormData) {
     setError(null);
@@ -15,6 +16,7 @@ export function AddMemberModal({ action }: { action: (formData: FormData) => Pro
       try {
         await action(formData);
         setOpen(false);
+        setIncludePast(false);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong");
       }
@@ -44,13 +46,27 @@ export function AddMemberModal({ action }: { action: (formData: FormData) => Pro
             <p className="text-xs text-[var(--muted-2)]">
               They don&apos;t need an account to be added and split expenses.
             </p>
-            <label className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] px-3 py-2 text-xs text-[var(--muted)]">
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] px-3 py-2.5 text-xs text-[var(--muted)] transition-colors hover:border-[var(--border)] hover:bg-[var(--surface-hover)]">
               <input
                 type="checkbox"
                 name="includeInPastExpenses"
                 value="true"
-                className="mt-0.5 h-3.5 w-3.5 accent-[var(--accent)]"
+                checked={includePast}
+                onChange={(e) => setIncludePast(e.target.checked)}
+                className="sr-only"
               />
+              <span
+                className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
+                  includePast
+                    ? "border-[var(--accent)] bg-[var(--accent)]"
+                    : "border-[var(--border)] bg-[var(--background)]"
+                }`}
+              >
+                <Check
+                  className={`h-3 w-3 text-white transition-opacity ${includePast ? "opacity-100" : "opacity-0"}`}
+                  strokeWidth={3}
+                />
+              </span>
               <span>
                 Also add them to existing equal-split expenses that everyone else is already part of. Expenses split
                 a specific way (exact, percent, shares, or only some members) are left as they are.
