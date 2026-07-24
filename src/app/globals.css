@@ -110,6 +110,19 @@ select {
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
+/* Chrome/Edge/Safari force a light autofill background with dark text via
+   their own UA stylesheet, ignoring our background/color. This trick uses
+   an absurdly long transition delay to keep our colors instead. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  box-shadow: 0 0 0 1000px var(--background) inset;
+  transition: background-color 9999s ease-in-out 0s, color 9999s ease-in-out 0s;
+}
+
 /* Page/modal entrance animations are handled by GSAP (see PageTransition.tsx
    and Modal.tsx) rather than CSS keyframes, so they can be sequenced and
    staggered instead of just fading in all at once. */
