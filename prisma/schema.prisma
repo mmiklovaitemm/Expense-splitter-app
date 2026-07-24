@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SplitType is one of: EQUAL | EXACT | PERCENT | SHARES (validated in app code;
+// SQLite has no native enum support)
+
+model User {
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  passwordHash String?
+  name         String
+  isGuest      Boolean  @default(false)
+  avatarColor  String   @default("#6366f1")
+  createdAt    DateTime @default(now())
+
+  memberships Member[]
+  paidExpenses Expense[]        @relation("PaidByUser")
+  settlementsFrom Settlement[]  @relation("SettlementFromUser")
+  settlementsTo   Settlement[]  @relation("SettlementToUser")
+}
+
+model Group {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  defaultCurrency String  @default("USD")
+  icon           String   @default("wallet")
+  createdAt      DateTime @default(now())
+
+  members    Member[]
+  expenses   Expense[]
+  settlements Settlement[]
+  categories Category[]
+}
+
+// A Member represents a participant within a group. It may or may not be
+// linked to a real User account -- this is what lets "shadow" people
+// (added by name only) participate in splits identically to account holders.
+model Member {
+  id          String   @id @default(cuid())
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId     String
+  user        User?    @relation(fields: [userId], references: [id])
+  userId      String?
+  name        String
+  avatarColor String   @default("#6366f1")
+  createdAt   DateTime @default(now())
+
+  paidExpenses    Expense[]      @relation("PaidByMember")
+  splits          ExpenseSplit[]
+  settlementsFrom Settlement[]   @relation("SettlementFromMember")
+  settlementsTo   Settlement[]   @relation("SettlementToMember")
+
+  @@index([groupId])
+}
+
+model Category {
+  id      String @id @default(cuid())
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId String
+  name    String
+  icon    String
+
+  expenses Expense[]
+
+  @@index([groupId])
+}
+
+model Expense {
+  id               String    @id @default(cuid())
+  group            Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId          String
+  description      String
+  category         Category? @relation(fields: [categoryId], references: [id])
+  categoryId       String?
+  date             DateTime  @default(now())
+
+  // Original entry currency/amount (minor units, e.g. cents)
+  originalCurrency String
+  originalAmount   Int
+
+  // Snapshot-converted amount in the group's default currency at entry time
+  convertedAmount  Int
+  exchangeRate     Float
+
+  splitType  String
+  paidByMember   Member @relation("PaidByMember", fields: [paidByMemberId], references: [id])
+  paidByMemberId String
+  paidByUser     User?  @relation("PaidByUser", fields: [paidByUserId], references: [id])
+  paidByUserId   String?
+
+  createdAt DateTime @default(now())
+
+  splits ExpenseSplit[]
+
+  @@index([groupId])
+  @@index([date])
+}
+
+// One row per member owing a share of an expense, always denominated
+// in the group's default currency (minor units) for balance math.
+model ExpenseSplit {
+  id         String  @id @default(cuid())
+  expense    Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  expenseId  String
+  member     Member  @relation(fields: [memberId], references: [id])
+  memberId   String
+  amount     Int     // owed amount in group default currency, minor units
+  percent    Float?  // stored for PERCENT split type (for display/edit)
+  shares     Int?    // stored for SHARES split type (for display/edit)
+
+  @@index([expenseId])
+  @@index([memberId])
+}
+
+model Settlement {
+  id       String   @id @default(cuid())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId  String
+  fromMember   Member @relation("SettlementFromMember", fields: [fromMemberId], references: [id])
+  fromMemberId String
+  toMember     Member @relation("SettlementToMember", fields: [toMemberId], references: [id])
+  toMemberId   String
+  fromUser   User?  @relation("SettlementFromUser", fields: [fromUserId], references: [id])
+  fromUserId String?
+  toUser     User?  @relation("SettlementToUser", fields: [toUserId], references: [id])
+  toUserId   String?
+
+  amount    Int      // minor units in group default currency
+  currency  String
+  note      String?
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([groupId])
+}
+
+model ExchangeRateCache {
+  id        String   @id @default(cuid())
+  base      String
+  rates     String   // JSON blob of { CUR: rate }
+  fetchedAt DateTime @default(now())
+
+  @@index([base])
+}
