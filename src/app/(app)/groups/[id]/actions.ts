@@ -258,9 +258,19 @@ export async function createGroupAction(formData: FormData) {
 export async function deleteGroupAction(groupId: string) {
   const { session } = await requireMembership(groupId);
 
-  // Cascades to members, expenses, expense splits, settlements, and
-  // categories via the onDelete: Cascade relations on Group in schema.prisma.
-  await prisma.group.delete({ where: { id: groupId } });
+  // Member is referenced by Expense.paidByMemberId, ExpenseSplit.memberId,
+  // and Settlement.from/toMemberId with ON DELETE RESTRICT, so members can't
+  // be removed while any of those still point at them. Delete everything in
+  // dependency order ourselves rather than relying on Group's cascade to
+  // sort it out.
+  await prisma.$transaction([
+    prisma.expenseSplit.deleteMany({ where: { expense: { groupId } } }),
+    prisma.expense.deleteMany({ where: { groupId } }),
+    prisma.settlement.deleteMany({ where: { groupId } }),
+    prisma.member.deleteMany({ where: { groupId } }),
+    prisma.category.deleteMany({ where: { groupId } }),
+    prisma.group.delete({ where: { id: groupId } }),
+  ]);
 
   const nextGroup = await prisma.member.findFirst({
     where: { userId: session.user.id },
