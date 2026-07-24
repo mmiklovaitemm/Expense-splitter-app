@@ -165,3 +165,18 @@ export async function createGroupAction(formData: FormData) {
 
   redirect(`/groups/${group.id}`);
 }
+
+export async function deleteGroupAction(groupId: string) {
+  const { session } = await requireMembership(groupId);
+
+  // Cascades to members, expenses, expense splits, settlements, and
+  // categories via the onDelete: Cascade relations on Group in schema.prisma.
+  await prisma.group.delete({ where: { id: groupId } });
+
+  const nextGroup = await prisma.member.findFirst({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "asc" },
+  });
+
+  redirect(nextGroup ? `/groups/${nextGroup.groupId}` : "/groups/new");
+}

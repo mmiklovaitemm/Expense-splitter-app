@@ -10,8 +10,9 @@ import { ActivityRow } from "@/components/ActivityRow";
 import { ActivityFilters } from "@/components/ActivityFilters";
 import { BalanceSidebar } from "@/components/BalanceSidebar";
 import { CategoryBreakdown } from "@/components/CategoryBreakdown";
+import { DeleteGroupModal } from "@/components/DeleteGroupModal";
 import { formatMoney } from "@/lib/money";
-import { createExpenseAction, recordSettlementAction, addMemberAction } from "./actions";
+import { createExpenseAction, recordSettlementAction, addMemberAction, deleteGroupAction } from "./actions";
 
 export default async function GroupPage({
   params,
@@ -94,6 +95,7 @@ export default async function GroupPage({
   const boundCreateExpense = createExpenseAction.bind(null, groupId);
   const boundRecordSettlement = recordSettlementAction.bind(null, groupId);
   const boundAddMember = addMemberAction.bind(null, groupId);
+  const boundDeleteGroup = deleteGroupAction.bind(null, groupId);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 pt-16 md:px-8 md:pt-8">
@@ -111,6 +113,7 @@ export default async function GroupPage({
             defaultCurrency={group.defaultCurrency}
             action={boundCreateExpense}
           />
+          <DeleteGroupModal groupName={group.name} action={boundDeleteGroup} />
         </div>
       </div>
 
