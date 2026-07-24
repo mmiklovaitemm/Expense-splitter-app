@@ -116,12 +116,46 @@ export async function recordSettlementAction(groupId: string, formData: FormData
 export async function addMemberAction(groupId: string, formData: FormData) {
   await requireMembership(groupId);
   const name = String(formData.get("name") ?? "").trim();
+  const includeInPastExpenses = formData.get("includeInPastExpenses") === "true";
   if (!name) throw new Error("Name is required");
 
   const colors = ["#a855f7", "#f97316", "#ec4899", "#14b8a6", "#3b82f6", "#eab308", "#ef4444", "#22c55e"];
   const color = colors[Math.floor(Math.random() * colors.length)];
 
-  await prisma.member.create({ data: { groupId, name, avatarColor: color } });
+  const existingMembers = await prisma.member.findMany({ where: { groupId }, select: { id: true } });
+  const existingMemberIds = new Set(existingMembers.map((m) => m.id));
+
+  const newMember = await prisma.member.create({ data: { groupId, name, avatarColor: color } });
+
+  if (includeInPastExpenses) {
+    const equalExpenses = await prisma.expense.findMany({
+      where: { groupId, splitType: "EQUAL" },
+      include: { splits: true },
+    });
+
+    // Only touch expenses that were split across every member who existed at
+    // the time (i.e. "split with everyone"), not ones deliberately split
+    // with just a subset — those stay exactly as they were entered.
+    for (const expense of equalExpenses) {
+      const splitMemberIds = new Set(expense.splits.map((s) => s.memberId));
+      const coversEveryone =
+        splitMemberIds.size === existingMemberIds.size && [...existingMemberIds].every((id) => splitMemberIds.has(id));
+      if (!coversEveryone) continue;
+
+      const newSplits = computeSplits("EQUAL", expense.convertedAmount, [
+        ...expense.splits.map((s) => ({ memberId: s.memberId })),
+        { memberId: newMember.id },
+      ]);
+
+      await prisma.$transaction([
+        prisma.expenseSplit.deleteMany({ where: { expenseId: expense.id } }),
+        prisma.expenseSplit.createMany({
+          data: newSplits.map((s) => ({ expenseId: expense.id, memberId: s.memberId, amount: s.amount })),
+        }),
+      ]);
+    }
+  }
+
   revalidatePath(`/groups/${groupId}`);
 }
 

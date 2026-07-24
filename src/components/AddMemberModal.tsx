@@ -44,6 +44,18 @@ export function AddMemberModal({ action }: { action: (formData: FormData) => Pro
             <p className="text-xs text-[var(--muted-2)]">
               They don&apos;t need an account to be added and split expenses.
             </p>
+            <label className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] px-3 py-2 text-xs text-[var(--muted)]">
+              <input
+                type="checkbox"
+                name="includeInPastExpenses"
+                value="true"
+                className="mt-0.5 h-3.5 w-3.5 accent-[var(--accent)]"
+              />
+              <span>
+                Also add them to existing equal-split expenses that everyone else is already part of. Expenses split
+                a specific way (exact, percent, shares, or only some members) are left as they are.
+              </span>
+            </label>
             {error && <p className="text-sm text-[var(--negative)]">{error}</p>}
             <button
               type="submit"
