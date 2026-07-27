@@ -151,7 +151,7 @@ export function AddExpenseModal({
               className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
             />
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input
                 name="amount"
                 required
@@ -161,13 +161,13 @@ export function AddExpenseModal({
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-32 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                className="w-24 shrink-0 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
               />
               <select
                 name="currency"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-2 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                className="shrink-0 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-2 py-2 text-sm outline-none focus:border-[var(--accent)]"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c} value={c}>
@@ -179,7 +179,7 @@ export function AddExpenseModal({
                 name="categoryId"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
-                className="flex-1 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-2 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                className="min-w-[120px] flex-1 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-2 py-2 text-sm outline-none focus:border-[var(--accent)]"
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -195,13 +195,13 @@ export function AddExpenseModal({
               </p>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <label className="text-sm text-[var(--muted)]">Paid by</label>
               <select
                 name="paidByMemberId"
                 value={paidByMemberId}
                 onChange={(e) => setPaidByMemberId(e.target.value)}
-                className="flex-1 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
+                className="min-w-[100px] flex-1 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
               >
                 {members.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -213,7 +213,7 @@ export function AddExpenseModal({
                 name="date"
                 type="date"
                 defaultValue={initial?.date ?? new Date().toISOString().slice(0, 10)}
-                className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
+                className="min-w-0 shrink-0 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
               />
             </div>
 
